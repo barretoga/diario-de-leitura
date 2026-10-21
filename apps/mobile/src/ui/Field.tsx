@@ -1,0 +1,10 @@
+import { forwardRef, useState } from "react";
+import { StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
+import { colors } from "./tokens";
+import { ActionIcon, type IconName } from "./ActionIcon";
+export type FieldProps = Omit<TextInputProps, "value" | "onChangeText"> & { label: string; value: string; onChangeText: (value: string) => void; hint?: string; error?: string; icon?: IconName };
+export const Field = forwardRef<TextInput, FieldProps>(function Field({ label, hint, error, icon, style, onFocus, onBlur, ...props }, ref) {
+  const [focused, setFocused] = useState(false);
+  return <View style={styles.field}><Text style={styles.label}>{label}</Text><View><TextInput ref={ref} {...props} onFocus={event => { setFocused(true); onFocus?.(event); }} onBlur={event => { setFocused(false); onBlur?.(event); }} accessibilityLabel={props.accessibilityLabel ?? label} placeholderTextColor={colors.muted} style={[styles.input, props.multiline && styles.multiline, focused && styles.focused, error && styles.invalid, icon && { paddingLeft: 44 }, style]} />{icon && <View pointerEvents="none" style={styles.icon}><ActionIcon name={icon} size={20} color={focused ? colors.accent : colors.muted} /></View>}</View>{!!error && <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text>}{!error && !!hint && <Text style={styles.hint}>{hint}</Text>}</View>;
+});
+const styles = StyleSheet.create({ field: { gap: 8 }, label: { color: colors.ink, fontSize: 14, fontWeight: "600" }, input: { minHeight: 54, borderWidth: 1, borderColor: colors.outline, borderRadius: 12, padding: 14, backgroundColor: colors.surface, color: colors.ink, fontSize: 16 }, multiline: { minHeight: 112, textAlignVertical: "top" }, focused: { borderColor: colors.accent, backgroundColor: "#FBFDFB" }, invalid: { borderColor: colors.danger }, icon: { position: "absolute", top: 17, left: 14 }, hint: { color: colors.muted, fontSize: 14, lineHeight: 21 }, error: { color: colors.danger, fontSize: 14, lineHeight: 21 } });

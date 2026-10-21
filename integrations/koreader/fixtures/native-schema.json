@@ -1,0 +1,9 @@
+{
+  "target": "KOReader 2026.07.1",
+  "userVersion": 20221111,
+  "note": "Supported column subset from native statistics; not a replacement or full schema dump",
+  "tables": {
+    "book": ["id", "title", "authors", "md5"],
+    "page_stat_data": ["id_book", "page", "start_time", "duration", "total_pages"]
+  }
+}

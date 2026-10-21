@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { isKOReaderLog, logPresentation } from '../src/logs/source.ts';
+import { streakStats, dailyGoalStats, periodStats } from '../src/statistics/readingStats.ts';
+import { client } from './koreader-helpers.mjs';
+const id = 'koreader-' + 'a'.repeat(64);
+const date = '2026-10-02T12:00:00.000Z';
+const book = { id: 'book-000001', title: 'Livro', author: '', created_at: date };
+const log = { id, book_id: book.id, book_title: book.title, started_at: date, created_at: date, minutes: 0, progress_value: null, progress_unit: null, note: '' };
+test('subminute source counts reading and streak without inflating minutes', () => {
+  const now = new Date(date);
+  assert.equal(isKOReaderLog(id), true); assert.equal(isKOReaderLog('koreader-short'), false);
+  assert.equal(streakStats([log, {...log, id:'manual-log', note:'Nota'}], now).activeDays, 1);
+  assert.equal(periodStats([log], now, 7).sessions, 1);
+  assert.equal(dailyGoalStats([log], now, 20).todayMinutes, 0);
+  assert.equal(streakStats([{...log, deleted_at:date}, {...log, started_at:'2026-10-03T12:00:00.000Z'}], now).activeDays, 0);
+  assert.equal(logPresentation(log).duration, 'Menos de 1 min'); assert.equal(logPresentation(log).editable, false);
+  assert.equal(logPresentation({...log,id:'manual-log',minutes:90}).duration, '1h 30min');
+});
+test('derived edit guard protects rows/outbox; backup preserves origin and deletion stays available', async t => {
+  const a = await client(t), b = await client(t);
+  await a.store.restoreBackup({format:'reading-log-backup', version:1, exportedAt:date, books:[book], logs:[log]});
+  const before = a.raw.prepare('SELECT * FROM sync_pending ORDER BY entity,id').all();
+  await assert.rejects(a.store.save('log', id, {...log,minutes:5}), /KOReader/);
+  assert.equal((await a.store.get('log',id)).minutes, 0);
+  assert.deepEqual(a.raw.prepare('SELECT * FROM sync_pending ORDER BY entity,id').all(),before);
+  const backup = await a.store.exportBackup(); assert.equal(backup.version,4); assert.equal(backup.logs[0].id,id);
+  for (const secret of ['token','generationId','activationUnix','deviceId','cursor']) assert.equal(JSON.stringify(backup).includes(secret),false);
+  await b.store.restoreBackup(backup); assert.equal((await b.store.get('log',id)).id,id);
+  await b.store.remove('log',id); assert.ok((await b.store.get('log',id)).deleted_at);
+  await a.store.save('log','manual-log',{...log,minutes:5}); await a.store.save('log','manual-log',{...log,minutes:8});
+  assert.equal((await a.store.get('log','manual-log')).minutes,8);
+});

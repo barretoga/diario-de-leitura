@@ -1,0 +1,20 @@
+Livro de teste (Autora Exemplo)
+- Seu destaque na página 12 | Posição 150-152 | Adicionado: segunda-feira, 21 de setembro de 2026 09:15:00
+
+Um trecho inventado para testar a importação.
+Segunda linha com acentos: ação e memória.
+==========
+Livro de teste (Autora Exemplo)
+- Sua nota na posição 152 | Adicionado em segunda-feira, 21 de setembro de 2026 09:16:00
+
+Uma nota de teste.
+==========
+Livro de teste (Autora Exemplo)
+- Seu marcador na página 13 | Posição 160 | Adicionado: segunda-feira, 21 de setembro de 2026 09:17:00
+
+==========
+Example Book (Example Author)
+- Your Highlight on page 10 | Location 100-102 | Added on Monday, September 21, 2026 9:00:00 AM
+
+A fictional passage for automated tests.
+==========

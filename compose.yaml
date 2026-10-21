@@ -1,0 +1,33 @@
+services:
+  api:
+    build: ./apps/server
+    restart: unless-stopped
+    environment:
+      READING_LOG_TOKEN: ${READING_LOG_TOKEN:?Defina READING_LOG_TOKEN no arquivo .env}
+      DATABASE_PATH: /data/reading-log.db
+      PORT: 8080
+    ports:
+      - "127.0.0.1:${API_PORT:-8080}:8080"
+    volumes:
+      - reading_log_data:/data
+
+  caddy:
+    image: caddy:2.10.2-alpine
+    profiles: [proxy]
+    restart: unless-stopped
+    depends_on: [api]
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  reading_log_data:
+  caddy_data:
+  caddy_config:

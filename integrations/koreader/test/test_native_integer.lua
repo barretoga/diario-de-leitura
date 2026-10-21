@@ -1,0 +1,23 @@
+-- Exercise the complete native capture with LJSQLite3's FFI integer boundary.
+-- The former Python-only integer fixtures hid the real Kindle exception.
+local Queue=require('queue');local Native=require('native');local Collector=require('collector');local SQ=require('lua-ljsqlite3/init')
+local checksum=string.rep('c',32)
+local db=SQ.open(TEST_DIR..'/statistics.sqlite3')
+db:exec("CREATE TABLE book(id INTEGER PRIMARY KEY,title TEXT,authors TEXT,md5 TEXT); CREATE TABLE page_stat_data(id_book INTEGER,page INTEGER,start_time INTEGER,duration INTEGER,total_pages INTEGER); PRAGMA user_version=20221111; INSERT INTO book VALUES(7,'Livro nativo','Autora','"..checksum.."'); INSERT INTO page_stat_data VALUES(7,12,1700000010,65,300);");db:close()
+local q=Queue.open(TEST_DIR..'/native-integers.sqlite',{});q:activate(1700000000,'device','generation','https://books.example')
+local source=Native.new({document={info={has_pages=false}},doc_settings={readSetting=function()return checksum end},rolling={getLastPercent=function()return 0.25 end}}, {settingsDir=TEST_DIR})
+local collector=Collector.new(source,q,function()return 1700000100 end)
+local captured,why=pcall(collector.collect,collector)
+assert(captured and why,'native SQLite integer values must not crash capture')
+assert(q:status().events==1 and q:status().pending==2)
+local batch=q:freezeNext('native-batch');local payload=require('dkjson').decode(batch.json)
+assert(payload.events[1].nativeBookId==7 and payload.events[1].page==12)
+assert(payload.events[1].durationSeconds==65 and payload.events[1].startTime==1700000010 and payload.events[1].totalPages==300)
+assert(payload.progress.percent==25 and payload.progress.sequence==1)
+source.ui.document=nil
+assert(collector:collect());assert(q:status().events==1,'repeated capture does not duplicate the native page')
+q:ack(batch.batchId,{protocolVersion=1,batchId=batch.batchId,events={{index=0,status='accepted'}},progress={status='accepted'}})
+assert(q:status().pending==0);q:close()
+local DB=require('sqlite');local conn=SQ.open(TEST_DIR..'/number-range.sqlite')
+assert(not pcall(DB.one,conn,'SELECT 9007199254740992 AS unsafe_id'),'out-of-range integer must be rejected rather than rounded')
+conn:close()

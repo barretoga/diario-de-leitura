@@ -1,0 +1,10 @@
+{
+  "protocolVersion": 1,
+  "deviceId": "bc5ba97b-d778-416f-a488-026e9955a09f",
+  "generationId": "5c61d5a6-7d68-41e2-9c5b-896ae06d65cd",
+  "activationUnix": 1790866800,
+  "batchId": "23343438-fda1-4432-a15a-9b9af67a9851",
+  "document": { "documentId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "title": "Dom Casmurro", "author": "Machado de Assis" },
+  "events": [{ "nativeBookId": 1, "page": 12, "startTime": 1790953100, "durationSeconds": 75, "totalPages": 300 }],
+  "progress": { "sequence": 1, "capturedAt": "2026-10-02T15:00:00.000Z", "percent": 4.1 }
+}
