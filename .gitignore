@@ -21,3 +21,5 @@ backups/
 android/
 ios/
 __pycache__/
+deploy/vps/*.env
+deploy/vps/caddy/

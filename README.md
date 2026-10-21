@@ -35,6 +35,7 @@ flowchart LR
 | `scripts` | Inicializador de desenvolvimento (`pnpm dev`) |
 | `compose.yaml` | API pessoal em Docker |
 | `compose.catalog.yaml` | API de catálogo em Docker |
+| `deploy/vps` | Implantação de produção: API + catálogo + gateway Nginx + Caddy (HTTPS) |
 
 Cada instalação atende uma pessoa. A API pessoal usa um token bearer (`READING_LOG_TOKEN`) em todas as rotas de dados; não há contas de usuário.
 
@@ -114,12 +115,34 @@ O Compose publica a API somente em `127.0.0.1` e persiste o banco no volume `rea
 
 ### Publicar na VPS
 
-Para servir a API em um domínio próprio com HTTPS automático (Caddy, TLS 1.2–1.3, certificado renovado sozinho):
+A pasta `deploy/vps` tem a configuração usada em produção: a API pessoal e o catálogo ficam atrás de um gateway Nginx (que limita o catálogo e remove credenciais das requisições a ele), e o Caddy publica tudo em HTTPS com certificado Let's Encrypt renovado automaticamente. Todos os containers rodam sem capabilities, com `no-new-privileges` e, quando possível, sistema de arquivos somente leitura.
+
+```mermaid
+flowchart LR
+  Internet -->|443| Caddy --> Gateway[Gateway Nginx]
+  Gateway -->|/v1/catalog/| Catalog[Catálogo]
+  Gateway -->|demais rotas| API[API pessoal]
+  API --> DB[(SQLite em ./data)]
+```
 
 1. Crie um registro DNS **A** (e **AAAA** somente se a VPS tiver IPv6 funcional) para o subdomínio, por exemplo `leituras.seudominio.com`.
-2. Libere no firewall `80/tcp` e `443/tcp` (e `443/udp` para HTTP/3).
-3. Defina `PUBLIC_DOMAIN` no `.env` e execute `docker compose --profile proxy up -d --build`.
-4. Verifique:
+2. Libere no firewall `80/tcp`, `443/tcp` e `443/udp` (HTTP/3). As portas publicadas pelo Docker não passam pelo ufw, mas manter as regras documenta a intenção.
+3. Na VPS, dentro de `deploy/vps`, copie os exemplos e preencha:
+   - `.env`: imagens fixadas por digest, `PUBLIC_DOMAIN` e `PUBLIC_IP` (use o IP público se outra coisa, como `tailscale serve`, já escuta na 443);
+   - `api.env`: `READING_LOG_TOKEN` e `KOREADER_TIME_ZONE`;
+   - `catalog.env`: `GOOGLE_BOOKS_API_KEY` e `CATALOG_CONTACT_EMAIL`.
+
+   Deixe os três com `chmod 600`.
+4. Crie as pastas de dados (o usuário `node` da imagem tem UID 1000) e suba:
+
+   ```bash
+   sudo install -d -m 700 -o 1000 -g 1000 data
+   sudo install -d -m 700 caddy/data caddy/config
+   sudo docker compose up -d --build
+   ```
+
+   Para migrar de outra instalação, restaure um backup em `data/reading-log.db` antes do primeiro `up` (veja *Backup e restauração*).
+5. Verifique:
 
    ```bash
    curl -sS https://<PUBLIC_DOMAIN>/health
@@ -128,6 +151,14 @@ Para servir a API em um domínio próprio com HTTPS automático (Caddy, TLS 1.2�
    ```
 
    O último retorna `{ "protocolVersion": 1, "serverId": "..." }`.
+
+Para atualizar o servidor, faça um backup e depois rode `git pull` e `sudo docker compose up -d --build api catalog`. Com a API ativa, o backup pode ser feito direto no container (o arquivo fica em `data/`):
+
+```bash
+sudo docker compose exec api node src/maintenance.js backup /data/backup-$(date +%Y%m%d-%H%M%S).sqlite
+```
+
+O `compose.yaml` da raiz continua disponível para uma instalação mínima (somente a API, com Caddy opcional pelo perfil `proxy`).
 
 Ordem de implantação ao sair de um túnel (ngrok) para o domínio:
 
@@ -299,4 +330,4 @@ Os fluxos de app, sincronização, backup, cronômetro, catálogo, importação 
 
 ## Licença
 
-A definir.
+[MIT](LICENSE).
